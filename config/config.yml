@@ -1,0 +1,9 @@
+---
+gps_info:
+ analyzed_variables: "null"
+ fallback_protocol: "land"
+ importance: "executive"
+fcu_health:
+ analyzed_variables: "null"
+ fallback_protocol: "land"
+ importance: "executive"
