@@ -10,6 +10,17 @@ find_package(ament_cmake REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(backward_ros REQUIRED)
+
+include(FetchContent)
+
+# Also requires one of: libbfd (gnu binutils), libdwarf, libdw (elfutils)
+FetchContent_Declare(Backward    #Note: For some reason I ran into issues when the target here is called backwards with a small b at the beginning
+    GIT_REPOSITORY https://github.com/bombela/backward-cpp
+    GIT_TAG master  # or a version tag, such as v1.6
+)
+FetchContent_MakeAvailable(Backward)
+
 
 set(COLCON_VARS ament_cmake diagnostic_msgs yaml-cpp rclcpp) # roslib
 
@@ -21,7 +32,7 @@ install(DIRECTORY
 include_directories(include)
 
 add_executable(diagnostic_module src/diagnostic_module.cpp)
-target_link_libraries(diagnostic_module yaml-cpp)
+target_link_libraries(diagnostic_module yaml-cpp backward_object)
 ament_target_dependencies(diagnostic_module ${COLCON_VARS})
 
 if(BUILD_TESTING)
