@@ -96,11 +96,11 @@ private:
                     if (name == module_name)
                     {
                         now = this->get_clock()->now().seconds() + this->get_clock()->now().nanoseconds()/float(1e9);
-                        RCLCPP_INFO(this->get_logger(), "ВРЕМЯ NOW = %f", now);
+                        // RCLCPP_INFO(this->get_logger(), "ВРЕМЯ NOW = %f", now);
                         status_time = status.first.seconds() + status.first.nanoseconds()/float(1e9);
-                        RCLCPP_INFO(this->get_logger(), "ВРЕМЯ status_time = %f", status_time);
+                        // RCLCPP_INFO(this->get_logger(), "ВРЕМЯ status_time = %f", status_time);
                         dt = now - status_time;
-                        RCLCPP_INFO(this->get_logger(), "РАЗНИЦА ВО ВРЕМЕНИ DT = %f", dt);
+                        // RCLCPP_INFO(this->get_logger(), "РАЗНИЦА ВО ВРЕМЕНИ DT = %f", dt);
                         if (abs(dt) < maxim_wait_time)
                         {
                             flag = 1;
