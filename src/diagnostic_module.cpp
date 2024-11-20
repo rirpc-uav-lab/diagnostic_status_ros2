@@ -20,10 +20,15 @@ public:
     Diagnostics()
     : Node("diagnostics")
     {
+
         std::string default_path_config = "/home/max/uav_ws/src/diagnostic_status_ros2/config/config.yml";
         std::string path_config = default_path_config;
         this->declare_parameter("path", default_path_config);
         this->get_parameter_or("path", path_config, default_path_config);
+
+        float default_maxim_wait_time = 3.0f;
+        this->declare_parameter("maxim_wait_time", default_maxim_wait_time);
+        this->get_parameter_or("maxim_wait_time", maxim_wait_time, default_maxim_wait_time);
 
         try {
             config = YAML::LoadFile(path_config);
@@ -41,7 +46,20 @@ public:
     }
 
 private:
-    std::map<std::string, std::map<std::string, diagnostic_msgs::msg::DiagnosticStatus>> modules_diagnostics;
+    /**
+     * std::map<
+     * std::string, - ключ, hardware_id из диагностик статуса. Нужен, чтобы собрать данные по разным частям одного модуля (программного или аппаратного) в одной переменной 
+     * std::map<std::string, diagnostic_msgs::msg::DiagnosticStatus> - значение, пояснение далее
+     * >
+     * 
+     * std::map<
+     * std::string, - ключ, name из диагностик статуса. В этом мапе собираются все данные по составным частям модуля, которым является hardware_id 
+     * diagnostic_msgs::msg::DiagnosticStatus - сам диагностик статус
+     * >
+     */
+    float maxim_wait_time;
+
+    std::map<std::string, std::map<std::string, std::pair<rclcpp::Time, diagnostic_msgs::msg::DiagnosticStatus>>> modules_diagnostics;
     rclcpp::TimerBase::SharedPtr timer_;
 
     rclcpp::Subscription<diagnostic_msgs::msg::DiagnosticStatus>::SharedPtr diagnostics_sub;
@@ -54,13 +72,58 @@ private:
     void timer_callback()
     {
         diagnostic_msgs::msg::DiagnosticArray array_msg;
+        diagnostic_msgs::msg::DiagnosticStatus error_msg;
+
         array_msg.header.stamp = this->get_clock()->now();
+
+        // if (modules_diagnostics.empty())
+        // {
+        //     return;
+        // }
+
+        float dt = 0.0f;
+        float now = 0.0f;
+        float status_time = 0.0f;
+        bool flag = 0;
+        for (const auto& key : config)
+        {
+            flag = 0;
+            std::string module_name = key.first.as<std::string>();
+            for (const auto& [hardware_id, map_name_and_status] : modules_diagnostics)
+            {
+                for (const auto& [name, status] : map_name_and_status)
+                {
+                    if (name == module_name)
+                    {
+                        now = this->get_clock()->now().seconds() + this->get_clock()->now().nanoseconds()/float(1e9);
+                        RCLCPP_INFO(this->get_logger(), "ВРЕМЯ NOW = %f", now);
+                        status_time = status.first.seconds() + status.first.nanoseconds()/float(1e9);
+                        RCLCPP_INFO(this->get_logger(), "ВРЕМЯ status_time = %f", status_time);
+                        dt = now - status_time;
+                        RCLCPP_INFO(this->get_logger(), "РАЗНИЦА ВО ВРЕМЕНИ DT = %f", dt);
+                        if (abs(dt) < maxim_wait_time)
+                        {
+                            flag = 1;
+                        } 
+                    }
+                }
+            }
+
+            if (flag == 0)
+            {
+                error_msg.message = "no information about " + module_name;
+                error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+                array_msg.status.push_back(error_msg);
+
+            }
+        }
 
         for (auto module_iter = modules_diagnostics.begin(); module_iter != modules_diagnostics.end(); module_iter++)
         {
             for (auto submodule_iter = module_iter->second.begin(); submodule_iter != module_iter->second.end(); submodule_iter++)
             {
-                array_msg.status.push_back(submodule_iter->second);
+                array_msg.status.push_back(submodule_iter->second.second);
+
             }
         }
 
@@ -82,6 +145,7 @@ private:
 
     void diagnostic_cb(diagnostic_msgs::msg::DiagnosticStatus diagnostic_status)
     {
+
         std::string analyzed_variables = safe_get_string(config[diagnostic_status.name], "analyzed_variables", diagnostic_status.name);
         std::string importance = safe_get_string(config[diagnostic_status.name], "importance", diagnostic_status.name);
         std::string fallback_protocol = safe_get_string(config[diagnostic_status.name], "fallback_protocol", diagnostic_status.name);
@@ -91,13 +155,12 @@ private:
             if (importance == "executive")
             {
                 std::string total_status = "OK";
-                for (const auto & [key,value]: diagnostic_status.values)
+
+                if (diagnostic_status.level == diagnostic_msgs::msg::DiagnosticStatus::ERROR)
                 {
-                    if (value == "ERROR")
-                    {
-                        total_status = "ERROR";
-                    }
+                    total_status = "ERROR";
                 }
+                
                 if (total_status == "ERROR")
                 {
                     std_msgs::msg::String pub = std_msgs::msg::String();
@@ -132,27 +195,74 @@ private:
             }
         }
 
-        for (auto module_iter = modules_diagnostics.begin(); module_iter != modules_diagnostics.end(); module_iter++)
+        // diagnostic_msgs::msg::DiagnosticArray array_msg;
+        // diagnostic_msgs::msg::DiagnosticStatus error_msg;
+
+        // if (modules_diagnostics.empty())
+        // {
+            
+        //     error_msg.message = "no information about modules_diagnostics";
+        //     error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        //     array_msg.status.push_back(error_msg);
+
+        // }
+        // else
+        // {
+        //     error_msg.message = "modules_diagnostics is NOT empty";
+        //     error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+        //     array_msg.status.push_back(error_msg);
+        // }
+        // diagnostic_array_pub->publish(array_msg);
+
+        // std::map<std::string, std::map<std::string, diagnostic_msgs::msg::DiagnosticStatus>> modules_diagnostics - пояснение к типу в комментарие к переменной
+        for (auto module_iter = modules_diagnostics.begin(); module_iter != modules_diagnostics.end(); module_iter++) // for для поиска модуля по hardware_id в большом мапе
         {
-            if (diagnostic_status.hardware_id == module_iter->first)
+            if (diagnostic_status.hardware_id == module_iter->first) // Проверка, нашли (true) или нет (false)
             {
-                for (auto submodule_iter = module_iter->second.begin(); submodule_iter != module_iter->second.end(); submodule_iter++)
+                // Если нашли, то:
+                for (auto submodule_iter = module_iter->second.begin(); submodule_iter != module_iter->second.end(); submodule_iter++) // Ищем name в маленьком мапе большого мапа
                 {
-                    if (submodule_iter->first == diagnostic_status.name)
+                    if (submodule_iter->first == diagnostic_status.name) // Проверка, нашли (true) или нет (false)
                     {
-                            submodule_iter->second = diagnostic_status;
-                            return;
+                            // Если нашли, то он уже существует. Обновляем данные:
+                            submodule_iter->second = std::make_pair(this->get_clock()->now(), diagnostic_status);
+                            return; // И возвращаем (выходим) из функции. Дальше код не пойдет
                     }
                 }
-                std::pair<std::string, diagnostic_msgs::msg::DiagnosticStatus> data = std::make_pair(diagnostic_status.name, diagnostic_status);
+                // Если мы сюда попали, значит return не сработал, т.е. name в маленьком мапе не найден. Создаем новый элемент в маленьком мапе большого мапа
+                auto time_status_pair = std::make_pair(this->get_clock()->now(), diagnostic_status);
+                std::pair<std::string, std::pair<rclcpp::Time, diagnostic_msgs::msg::DiagnosticStatus>> data = std::make_pair(diagnostic_status.name, time_status_pair);
                 module_iter->second.insert(data);
-                return;
+                return; // И выходим из функции
             }
         }
-        std::pair<std::string, diagnostic_msgs::msg::DiagnosticStatus> data = std::make_pair(diagnostic_status.name, diagnostic_status);
-        std::map<std::string, diagnostic_msgs::msg::DiagnosticStatus> submodule_map;
+        // Если мы сюда попали, значит return не сработал, т.е. hardware_id в большом мапе не найден. Создаем новый маленький мап
+        auto time_status_pair = std::make_pair(this->get_clock()->now(), diagnostic_status);
+        std::pair<std::string, std::pair<rclcpp::Time, diagnostic_msgs::msg::DiagnosticStatus>> data = std::make_pair(diagnostic_status.name, time_status_pair);
+        std::map<std::string, std::pair<rclcpp::Time, diagnostic_msgs::msg::DiagnosticStatus>> submodule_map;
         submodule_map.insert(data);
+        // И вносим маленький мап в большой по hardware_id
         modules_diagnostics.insert(std::pair(diagnostic_status.hardware_id, submodule_map));
+
+        // diagnostic_msgs::msg::DiagnosticArray array_msg;
+        // diagnostic_msgs::msg::DiagnosticStatus error_msg;
+
+        // if (modules_diagnostics.empty())
+        // {
+            
+        //     error_msg.message = "no information about modules_diagnostics";
+        //     error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        //     array_msg.status.push_back(error_msg);
+
+        // }
+        // else
+        // {
+        //     error_msg.message = "modules_diagnostics is NOT empty";
+        //     error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+        //     array_msg.status.push_back(error_msg);
+        // }
+        // diagnostic_array_pub->publish(array_msg);
+
     }
 };
 
