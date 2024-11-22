@@ -111,10 +111,12 @@ private:
 
             if (flag == 0)
             {
+                error_msg.hardware_id = config[module_name]["hardware_id"].as<std::string>();
+                error_msg.name = module_name;
                 error_msg.message = "no information about " + module_name;
                 error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-                array_msg.status.push_back(error_msg);
-
+                add_diagnostic_status_to_map(error_msg);
+                // array_msg.status.push_back(error_msg);
             }
         }
 
@@ -195,26 +197,12 @@ private:
             }
         }
 
-        // diagnostic_msgs::msg::DiagnosticArray array_msg;
-        // diagnostic_msgs::msg::DiagnosticStatus error_msg;
+        add_diagnostic_status_to_map(diagnostic_status);
+    }
 
-        // if (modules_diagnostics.empty())
-        // {
-            
-        //     error_msg.message = "no information about modules_diagnostics";
-        //     error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        //     array_msg.status.push_back(error_msg);
 
-        // }
-        // else
-        // {
-        //     error_msg.message = "modules_diagnostics is NOT empty";
-        //     error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-        //     array_msg.status.push_back(error_msg);
-        // }
-        // diagnostic_array_pub->publish(array_msg);
-
-        // std::map<std::string, std::map<std::string, diagnostic_msgs::msg::DiagnosticStatus>> modules_diagnostics - пояснение к типу в комментарие к переменной
+    void add_diagnostic_status_to_map(diagnostic_msgs::msg::DiagnosticStatus& diagnostic_status)
+    {
         for (auto module_iter = modules_diagnostics.begin(); module_iter != modules_diagnostics.end(); module_iter++) // for для поиска модуля по hardware_id в большом мапе
         {
             if (diagnostic_status.hardware_id == module_iter->first) // Проверка, нашли (true) или нет (false)
@@ -243,26 +231,6 @@ private:
         submodule_map.insert(data);
         // И вносим маленький мап в большой по hardware_id
         modules_diagnostics.insert(std::pair(diagnostic_status.hardware_id, submodule_map));
-
-        // diagnostic_msgs::msg::DiagnosticArray array_msg;
-        // diagnostic_msgs::msg::DiagnosticStatus error_msg;
-
-        // if (modules_diagnostics.empty())
-        // {
-            
-        //     error_msg.message = "no information about modules_diagnostics";
-        //     error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        //     array_msg.status.push_back(error_msg);
-
-        // }
-        // else
-        // {
-        //     error_msg.message = "modules_diagnostics is NOT empty";
-        //     error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-        //     array_msg.status.push_back(error_msg);
-        // }
-        // diagnostic_array_pub->publish(array_msg);
-
     }
 };
 
