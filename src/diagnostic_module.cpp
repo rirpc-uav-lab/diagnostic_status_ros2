@@ -42,7 +42,7 @@ public:
         diagnostics_sub = this->create_subscription<diagnostic_msgs::msg::DiagnosticStatus>("diagnostics", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort().durability_volatile(), std::bind(&Diagnostics::diagnostic_cb, this, _1));
         diagnostic_array_pub = this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("diagnostic_info_output", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort().durability_volatile());
         diagnostics_pub = this->create_publisher<std_msgs::msg::String>("diagnostics/emergency_command", 10);
-        unknown_diagnostics_sub = this->create_publisher<std_msgs::msg::String>("diagnostics/unknown_keys", 10);
+        unknown_diagnostics_pub = this->create_publisher<std_msgs::msg::String>("diagnostics/unknown_keys", 10);
     }
 
 private:
@@ -63,7 +63,7 @@ private:
     rclcpp::TimerBase::SharedPtr timer_;
 
     rclcpp::Subscription<diagnostic_msgs::msg::DiagnosticStatus>::SharedPtr diagnostics_sub;
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr unknown_diagnostics_sub;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr unknown_diagnostics_pub;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr diagnostics_pub;
     rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostic_array_pub;
 
@@ -135,10 +135,10 @@ private:
         if (node[key]) {
             return node[key].as<std::string>();
         } else {
-            RCLCPP_ERROR_STREAM(this->get_logger(), "Missing key: " << key);
-            std_msgs::msg::String msg;
-            msg.data = module_name;
-            unknown_diagnostics_sub->publish(msg);
+            // RCLCPP_ERROR_STREAM(this->get_logger(), "Missing key: " << key);
+            // std_msgs::msg::String msg;
+            // msg.data = module_name;
+            // unknown_diagnostics_pub->publish(msg);
             return "";
         }
     }
