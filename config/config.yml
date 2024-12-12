@@ -1,31 +1,31 @@
 ---
 # low level module
 gps_info:
-  analyzed_variables: "null"
+  analyzed_variables: "None"
   fallback_protocol: land
   importance: executive
   hardware_id: low_level_module
 fcu_health:
-  analyzed_variables: "null"
+  analyzed_variables: "None"
   fallback_protocol: land
   importance: executive
   hardware_id: low_level_module
 battery_info:
-  analyzed_variables: "null"
+  analyzed_variables: "None"
   fallback_protocol: rtl
   importance: executive
   hardware_id: low_level_module
 
 # object detector
 camera_info_status:
-  analyzed_variables: "null"
+  analyzed_variables: "None"
   fallback_protocol: land
   importance: executive
   hardware_id: landing_cam
 
 # on board rtcm handler
 on_board_rtcm_status:
-  analyzed_variables: "null"
-  fallback_protocol: "null"
+  analyzed_variables: "None"
+  fallback_protocol: "None"
   importance: neglective
   hardware_id: rtcm_module
