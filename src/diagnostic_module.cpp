@@ -150,7 +150,7 @@ private:
         std::string importance = safe_get_string(config[diagnostic_status.name], "importance", diagnostic_status.name);
         std::string fallback_protocol = safe_get_string(config[diagnostic_status.name], "fallback_protocol", diagnostic_status.name);
 
-        if (analyzed_variables == "null")
+        if (analyzed_variables == "None")
         {
             if (importance == "executive")
             {
@@ -184,7 +184,7 @@ private:
                 }
                 catch (const std::exception& e)
                 {
-                    RCLCPP_ERROR_STREAM(this->get_logger(), "Configuration error: " << e.what());
+                    // RCLCPP_INFO_STREAM(this->get_logger(), "Configuration error: " << e.what());
                 }
             }
             if (total_status == "ERROR")

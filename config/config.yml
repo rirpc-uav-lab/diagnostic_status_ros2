@@ -35,6 +35,12 @@ system_health:
   fallback_protocol: "None" # TODO
   importance: neglective
   hardware_id: low_level_module
+mode_data:
+  analyzed_variables: "None"
+  fallback_protocol: "None"
+  importance: neglective
+  hardware_id: low_level_module
+
 # object detector
 camera_info_status:
   analyzed_variables: "None"
