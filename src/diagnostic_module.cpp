@@ -42,10 +42,12 @@ public:
         diagnostics_sub = this->create_subscription<diagnostic_msgs::msg::DiagnosticStatus>("diagnostics", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort().durability_volatile(), std::bind(&Diagnostics::diagnostic_cb, this, _1));
         diagnostic_array_pub = this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("diagnostic_info_output", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort().durability_volatile());
         diagnostics_pub = this->create_publisher<std_msgs::msg::String>("diagnostics/emergency_command", 10);
-        unknown_diagnostics_pub = this->create_publisher<std_msgs::msg::String>("diagnostics/unknown_keys", 10);
+        unknown_diagnostics_sub = this->create_publisher<std_msgs::msg::String>("diagnostics/unknown_keys", 10);
     }
 
 private:
+
+    float maxim_wait_time = 0.0f;
     /**
      * std::map<
      * std::string, - ключ, hardware_id из диагностик статуса. Нужен, чтобы собрать данные по разным частям одного модуля (программного или аппаратного) в одной переменной 
@@ -57,13 +59,11 @@ private:
      * diagnostic_msgs::msg::DiagnosticStatus - сам диагностик статус
      * >
      */
-    float maxim_wait_time;
-
     std::map<std::string, std::map<std::string, std::pair<rclcpp::Time, diagnostic_msgs::msg::DiagnosticStatus>>> modules_diagnostics;
     rclcpp::TimerBase::SharedPtr timer_;
 
     rclcpp::Subscription<diagnostic_msgs::msg::DiagnosticStatus>::SharedPtr diagnostics_sub;
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr unknown_diagnostics_pub;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr unknown_diagnostics_sub;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr diagnostics_pub;
     rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostic_array_pub;
 
@@ -76,10 +76,6 @@ private:
 
         array_msg.header.stamp = this->get_clock()->now();
 
-        // if (modules_diagnostics.empty())
-        // {
-        //     return;
-        // }
 
         float dt = 0.0f;
         float now = 0.0f;
@@ -95,12 +91,15 @@ private:
                 {
                     if (name == module_name)
                     {
+                        RCLCPP_INFO(this->get_logger(), "Для модуля %s", module_name);
                         now = this->get_clock()->now().seconds() + this->get_clock()->now().nanoseconds()/float(1e9);
-                        // RCLCPP_INFO(this->get_logger(), "ВРЕМЯ NOW = %f", now);
+                        RCLCPP_INFO(this->get_logger(), "now = %f", now);
+
                         status_time = status.first.seconds() + status.first.nanoseconds()/float(1e9);
-                        // RCLCPP_INFO(this->get_logger(), "ВРЕМЯ status_time = %f", status_time);
+                        RCLCPP_INFO(this->get_logger(), "status_time = %f", status_time);
+                        
                         dt = now - status_time;
-                        // RCLCPP_INFO(this->get_logger(), "РАЗНИЦА ВО ВРЕМЕНИ DT = %f", dt);
+                        RCLCPP_INFO(this->get_logger(), "dt = %f", dt);
                         if (abs(dt) < maxim_wait_time)
                         {
                             flag = 1;
@@ -112,11 +111,10 @@ private:
             if (flag == 0)
             {
                 error_msg.hardware_id = config[module_name]["hardware_id"].as<std::string>();
-                error_msg.name = module_name;
                 error_msg.message = "no information about " + module_name;
                 error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-                add_diagnostic_status_to_map(error_msg);
-                // array_msg.status.push_back(error_msg);
+                array_msg.status.push_back(error_msg);
+
             }
         }
 
@@ -137,10 +135,10 @@ private:
         if (node[key]) {
             return node[key].as<std::string>();
         } else {
-            // RCLCPP_ERROR_STREAM(this->get_logger(), "Missing key: " << key);
-            // std_msgs::msg::String msg;
-            // msg.data = module_name;
-            // unknown_diagnostics_pub->publish(msg);
+            RCLCPP_ERROR_STREAM(this->get_logger(), "Missing key: " << key);
+            std_msgs::msg::String msg;
+            msg.data = module_name;
+            unknown_diagnostics_sub->publish(msg);
             return "";
         }
     }
@@ -197,12 +195,6 @@ private:
             }
         }
 
-        add_diagnostic_status_to_map(diagnostic_status);
-    }
-
-
-    void add_diagnostic_status_to_map(diagnostic_msgs::msg::DiagnosticStatus& diagnostic_status)
-    {
         for (auto module_iter = modules_diagnostics.begin(); module_iter != modules_diagnostics.end(); module_iter++) // for для поиска модуля по hardware_id в большом мапе
         {
             if (diagnostic_status.hardware_id == module_iter->first) // Проверка, нашли (true) или нет (false)
@@ -224,13 +216,13 @@ private:
                 return; // И выходим из функции
             }
         }
-        // Если мы сюда попали, значит return не сработал, т.е. hardware_id в большом мапе не найден. Создаем новый маленький мап
         auto time_status_pair = std::make_pair(this->get_clock()->now(), diagnostic_status);
         std::pair<std::string, std::pair<rclcpp::Time, diagnostic_msgs::msg::DiagnosticStatus>> data = std::make_pair(diagnostic_status.name, time_status_pair);
         std::map<std::string, std::pair<rclcpp::Time, diagnostic_msgs::msg::DiagnosticStatus>> submodule_map;
         submodule_map.insert(data);
-        // И вносим маленький мап в большой по hardware_id
         modules_diagnostics.insert(std::pair(diagnostic_status.hardware_id, submodule_map));
+
+
     }
 };
 

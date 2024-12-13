@@ -1,31 +1,83 @@
 ---
 # low level module
 gps_info:
-  analyzed_variables: "null"
+  analyzed_variables: "None"
   fallback_protocol: land
   importance: executive
   hardware_id: low_level_module
 fcu_health:
-  analyzed_variables: "null"
+  analyzed_variables: "None"
   fallback_protocol: land
   importance: executive
   hardware_id: low_level_module
 battery_info:
-  analyzed_variables: "null"
+  analyzed_variables: "None"
   fallback_protocol: rtl
   importance: executive
   hardware_id: low_level_module
-
+mavros_health:
+  analyzed_variables: "None"
+  fallback_protocol: "None" # TODO
+  importance: executive
+  hardware_id: low_level_module
+rangefinder_health:
+  analyzed_variables: "None"
+  fallback_protocol: "None" # TODO
+  importance: executive
+  hardware_id: low_level_module
+params_info:
+  analyzed_variables: "None"
+  fallback_protocol: "None" # TODO
+  importance: neglective
+  hardware_id: low_level_module
+system_health:
+  analyzed_variables: "None"
+  fallback_protocol: "None" # TODO
+  importance: neglective
+  hardware_id: low_level_module
 # object detector
 camera_info_status:
-  analyzed_variables: "null"
+  analyzed_variables: "None"
   fallback_protocol: land
   importance: executive
   hardware_id: landing_cam
 
 # on board rtcm handler
 on_board_rtcm_status:
-  analyzed_variables: "null"
-  fallback_protocol: "null"
+  analyzed_variables: "None"
+  fallback_protocol: "None"
   importance: neglective
   hardware_id: rtcm_module
+behaviour_module:
+  analyzed_variables: "None"
+  fallback_protocol: "None" # TODO
+  importance: neglective
+  hardware_id: high_level_module
+local_planner:
+  analyzed_variables: "None"
+  fallback_protocol: "None" # TODO
+  importance: neglective
+  hardware_id: high_level_module
+
+uav_connection:
+  analyzed_variables: "None"
+  fallback_protocol: "None" # TODO
+  importance: neglective
+  hardware_id: communication_module
+npu_connection:
+  analyzed_variables: "None"
+  fallback_protocol: "None" # TODO
+  importance: neglective
+  hardware_id: communication_module
+
+camera_health:
+  analyzed_variables: "None"
+  fallback_protocol: "None" # TODO
+  importance: neglective
+  hardware_id: camera_module
+
+path_sub:
+  analyzed_variables: "None"
+  fallback_protocol: "None" # TODO
+  importance: neglective
+  hardware_id: dir_path
