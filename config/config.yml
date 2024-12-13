@@ -15,6 +15,11 @@ battery_info:
   fallback_protocol: rtl
   importance: executive
   hardware_id: low_level_module
+mode_data:
+  analyzed_variables: "None"
+  fallback_protocol: "None"
+  importance: neglective
+  hardware_id: low_level_module
 
 # object detector
 camera_info_status:
