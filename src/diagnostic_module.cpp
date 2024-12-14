@@ -40,7 +40,7 @@ public:
         timer_ = this->create_wall_timer(500ms, std::bind(&Diagnostics::timer_callback, this));
 
         diagnostics_sub = this->create_subscription<diagnostic_msgs::msg::DiagnosticStatus>("diagnostics", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort().durability_volatile(), std::bind(&Diagnostics::diagnostic_cb, this, _1));
-        diagnostic_array_pub = this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("diagnostic_info_output", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort().durability_volatile());
+        diagnostic_array_pub = this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("diagnostic_info_output", 10);
         diagnostics_pub = this->create_publisher<std_msgs::msg::String>("diagnostics/emergency_command", 10);
         unknown_diagnostics_sub = this->create_publisher<std_msgs::msg::String>("diagnostics/unknown_keys", 10);
     }
