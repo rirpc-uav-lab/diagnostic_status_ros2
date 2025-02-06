@@ -69,66 +69,58 @@ private:
 
     YAML::Node config;
 
-    void timer_callback()
+void timer_callback()
+{
+    diagnostic_msgs::msg::DiagnosticArray array_msg;
+    diagnostic_msgs::msg::DiagnosticStatus error_msg;
+    array_msg.header.stamp = this->get_clock()->now();
+
+    std::map<std::string, diagnostic_msgs::msg::DiagnosticStatus> latest_module_status;
+    std::map<std::string, bool> module_info_added;
+    float now = this->get_clock()->now().seconds() + this->get_clock()->now().nanoseconds()/float(1e9);
+    float dt = 0.0f;
+    float status_time = 0.0f;
+
+    // Собираем самые свежие статусы из modules_diagnostics, проверяя время
+    for (const auto& [hardware_id, map_name_and_status] : modules_diagnostics)
     {
-        diagnostic_msgs::msg::DiagnosticArray array_msg;
-        diagnostic_msgs::msg::DiagnosticStatus error_msg;
-
-        array_msg.header.stamp = this->get_clock()->now();
-
-
-        float dt = 0.0f;
-        float now = 0.0f;
-        float status_time = 0.0f;
-        bool flag = 0;
-        for (const auto& key : config)
+        for (const auto& [name, status] : map_name_and_status)
         {
-            flag = 0;
-            std::string module_name = key.first.as<std::string>();
-            for (const auto& [hardware_id, map_name_and_status] : modules_diagnostics)
+            status_time = status.first.seconds() + status.first.nanoseconds()/float(1e9);
+            dt = now - status_time;
+
+            if (abs(dt) < maxim_wait_time)
             {
-                for (const auto& [name, status] : map_name_and_status)
-                {
-                    if (name == module_name)
-                    {
-                        RCLCPP_INFO(this->get_logger(), "Для модуля %s", module_name);
-                        now = this->get_clock()->now().seconds() + this->get_clock()->now().nanoseconds()/float(1e9);
-                        RCLCPP_INFO(this->get_logger(), "now = %f", now);
-
-                        status_time = status.first.seconds() + status.first.nanoseconds()/float(1e9);
-                        RCLCPP_INFO(this->get_logger(), "status_time = %f", status_time);
-                        
-                        dt = now - status_time;
-                        RCLCPP_INFO(this->get_logger(), "dt = %f", dt);
-                        if (abs(dt) < maxim_wait_time)
-                        {
-                            flag = 1;
-                        } 
-                    }
-                }
-            }
-
-            if (flag == 0)
-            {
-                error_msg.hardware_id = config[module_name]["hardware_id"].as<std::string>();
-                error_msg.message = "no information about " + module_name;
-                error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-                array_msg.status.push_back(error_msg);
-
+                latest_module_status[name] = status.second;
             }
         }
-
-        for (auto module_iter = modules_diagnostics.begin(); module_iter != modules_diagnostics.end(); module_iter++)
-        {
-            for (auto submodule_iter = module_iter->second.begin(); submodule_iter != module_iter->second.end(); submodule_iter++)
-            {
-                array_msg.status.push_back(submodule_iter->second.second);
-
-            }
-        }
-
-        diagnostic_array_pub->publish(array_msg);
     }
+
+    // Добавляем эти статусы в array_msg
+    for (const auto& [module_name, status] : latest_module_status)
+    {
+        array_msg.status.push_back(status);
+        module_info_added[module_name] = true;
+    }
+
+    // Проверяем, для каких модулей нет информации (или информация устарела), и добавляем сообщения "no information about"
+    for (const auto& key : config)
+    {
+        std::string module_name = key.first.as<std::string>();
+        if (latest_module_status.find(module_name) == latest_module_status.end())
+        {
+            // Информации о модуле нет или она устарела, добавляем сообщение об ошибке
+            diagnostic_msgs::msg::DiagnosticStatus error_msg;
+            error_msg.name = module_name;
+            error_msg.hardware_id = config[module_name]["hardware_id"].as<std::string>();
+            error_msg.message = "no information about " + module_name;
+            error_msg.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+            array_msg.status.push_back(error_msg);
+        }
+    }
+
+    diagnostic_array_pub->publish(array_msg);
+}
 
     std::string safe_get_string(const YAML::Node& node, const std::string& key, std::string module_name)
     {
